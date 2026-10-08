@@ -1,0 +1,9 @@
+version = 1
+
+[setup]
+script = ""
+
+[[actions]]
+name = "Run Encore"
+icon = "run"
+command = "./script/build_and_run.sh"

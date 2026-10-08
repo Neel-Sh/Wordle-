@@ -1,0 +1,23 @@
+{
+  "source": "SCOWL 2020.12.07",
+  "source_url": "https://downloads.sourceforge.net/wordlist/scowl-2020.12.07.tar.gz",
+  "answer_counts": {
+    "easy": 1982,
+    "medium": 4426,
+    "hard": 7014,
+    "expert": 10278
+  },
+  "accepted_count": 35643,
+  "answer_rules": "Lowercase American and general English, ASCII letters only, selected sensitive terms excluded.",
+  "levels": {
+    "easy": 40,
+    "medium": 50,
+    "hard": 50,
+    "expert": 55
+  },
+  "sha256": {
+    "answers.json": "06eeabafe87fbe6c9cf25a8e797f5c02a4018a7f50c56b1ab9dca772edb13dc6",
+    "accepted.txt": "9fdbd73917187d5f6f355dfc5ef04eb281c79d8447d7a4d750b44dccaac54711",
+    "WordListLicense.txt": "283326a422e29c510e2ba6805518c418ce3c35ed1fadc3eec83d2da4f6c5a055"
+  }
+}
