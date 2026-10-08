@@ -6,7 +6,6 @@ struct ContentView: View {
     @State private var pendingDifficulty: Difficulty?
     @State private var showConfirmation = false
     @State private var confirmationIsReveal = false
-    @FocusState private var inputFocused: Bool
     @AppStorage("encore.haptics") private var haptics = true
     @AppStorage("encore.symbols") private var showSymbols = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -17,29 +16,23 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                ScrollView {
-                    VStack(spacing: 0) {
-                        roundHeader.padding(.top, 8).padding(.bottom, 14)
-                        board(width: geometry.size.width, height: geometry.size.height)
-                        if game.round.isFinished {
-                            result.padding(.top, 24).padding(.bottom, 24)
-                        } else {
-                            status.padding(.top, 12).padding(.bottom, 8)
-                        }
+                VStack(spacing: 0) {
+                    roundHeader.padding(.top, 8).padding(.bottom, 16)
+                    if geometry.size.width > geometry.size.height && !game.round.isFinished {
+                        landscapeGame(size: geometry.size)
+                    } else {
+                        portraitGame(size: geometry.size)
                     }
-                    .frame(maxWidth: 560)
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollIndicators(.hidden)
-                .scrollDismissesKeyboard(.interactively)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if !game.round.isFinished { guessInput }
                 }
             }
             .background(EncoreBackdrop())
             .navigationTitle("Encore")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Encore").font(.system(.title3, design: .serif, weight: .semibold))
+                        .accessibilityAddTraits(.isHeader)
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("How to play", systemImage: "questionmark") { sheet = .help }
                         .accessibilityIdentifier("helpButton")
@@ -51,7 +44,6 @@ struct ContentView: View {
                         Button("Settings", systemImage: "slider.horizontal.3") { sheet = .settings }
                         if !game.round.isFinished {
                             Button("Reveal word", systemImage: "eye") {
-                                inputFocused = false
                                 confirmationIsReveal = true
                                 showConfirmation = true
                             }
@@ -88,15 +80,62 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { game.persist() }
             }
-            .onChange(of: game.round.isFinished) { _, finished in inputFocused = !finished }
-            .onChange(of: game.round.id) { _, _ in inputFocused = !game.round.isFinished }
-            .onChange(of: sheet) { _, value in inputFocused = value == nil && !game.round.isFinished }
-            .onChange(of: showConfirmation) { _, presented in
-                if !presented { inputFocused = !game.round.isFinished }
+            .background {
+                HardwareKeyboardInput(isActive: sheet == nil && !showConfirmation && !game.round.isFinished,
+                                      onLetter: game.enter, onDelete: game.delete, onSubmit: submit)
+                    .frame(width: 0, height: 0).accessibilityHidden(true)
             }
-            .task { inputFocused = !game.round.isFinished }
         }
         .tint(EncoreTheme.accent)
+    }
+
+    private func portraitGame(size: CGSize) -> some View {
+        let keyboardHeight: CGFloat = 202
+        let headerHeight: CGFloat = typeSize.isAccessibilitySize ? 94 : 68
+        let statusHeight: CGFloat = typeSize.isAccessibilitySize ? 54 : 38
+        let boardHeight = max(180, size.height - headerHeight - (game.round.isFinished ? 220 : keyboardHeight + statusHeight))
+        return VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    board(width: size.width, height: boardHeight)
+                        .frame(minHeight: boardHeight)
+                    if game.round.isFinished {
+                        result.padding(.top, 24).padding(.bottom, 24)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+            if !game.round.isFinished {
+                status.frame(minHeight: statusHeight).padding(.bottom, 6)
+                keyboard.padding(.bottom, 8)
+            }
+        }
+    }
+
+    private func landscapeGame(size: CGSize) -> some View {
+        let keyboardWidth = min(560, size.width * 0.5)
+        return HStack(spacing: 12) {
+            ScrollView {
+                board(width: size.width - keyboardWidth - 12, height: size.height - 84)
+                    .frame(maxWidth: .infinity).padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
+            VStack(spacing: 10) {
+                status
+                keyboard
+            }
+            .frame(width: keyboardWidth)
+        }
+        .padding(.bottom, 8)
+    }
+
+    private var keyboard: some View {
+        GameKeyboard(marks: game.round.keyboardMarks,
+                     canSubmit: game.round.draft.count == game.round.difficulty.letterCount,
+                     usesSymbols: showSymbols || differentiate,
+                     onLetter: game.enter, onDelete: game.delete, onSubmit: submit)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
     }
 
     private var roundHeader: some View {
@@ -133,17 +172,15 @@ struct ContentView: View {
             .accessibilityElement(children: .combine)
         }
         .padding(.horizontal, 24)
+        .frame(maxWidth: 560).frame(maxWidth: .infinity)
     }
 
     private func board(width: CGFloat, height: CGFloat) -> some View {
         let difficulty = game.round.difficulty
-        let gap: CGFloat = 6
-        let tileWidth = max(28, min(56, (min(width, 560) - 48 - CGFloat(difficulty.letterCount - 1) * gap) / CGFloat(difficulty.letterCount)))
-        // Geometry already follows the system keyboard's safe area. Reserve room
-        // for the header, clue line, and input accessory, then fit every row.
-        let budget = max(120, height - (typeSize.isAccessibilitySize ? 220 : 180))
-        let fittedHeight = (budget - CGFloat(difficulty.guessLimit - 1) * gap) / CGFloat(difficulty.guessLimit)
-        let tileHeight = max(24, min(tileWidth, fittedHeight))
+        let gap: CGFloat = 7
+        let availableWidth = (min(width, 560) - 48 - CGFloat(difficulty.letterCount - 1) * gap) / CGFloat(difficulty.letterCount)
+        let availableHeight = (height - 12 - CGFloat(difficulty.guessLimit - 1) * gap) / CGFloat(difficulty.guessLimit)
+        let tileSize = max(24, min(62, availableWidth, availableHeight))
         return VStack(spacing: gap) {
             ForEach(0..<difficulty.guessLimit, id: \.self) { row in
                 let guess = row < game.round.guesses.count ? game.round.guesses[row] : nil
@@ -154,7 +191,8 @@ struct ContentView: View {
                         LetterTile(letter: column < letters.count ? String(letters[column]) : "",
                                    mark: guess?.marks[column], isCurrent: active && column == letters.count,
                                    usesSymbols: showSymbols || differentiate)
-                        .frame(width: tileWidth, height: tileHeight)
+                        .frame(width: tileSize, height: tileSize)
+                        .accessibilityIdentifier("tile_\(row)_\(column)")
                         .accessibilityLabel("Position \(column + 1), \(column < letters.count ? String(letters[column]) : "empty")\(guess.map { ", " + $0.marks[column].description } ?? "")")
                     }
                 }
@@ -168,32 +206,6 @@ struct ContentView: View {
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 
-    private var guessInput: some View {
-        HStack(spacing: 12) {
-            TextField("Type a \(game.round.difficulty.letterCount)-letter word", text: Binding(
-                get: { game.round.draft }, set: { game.replaceDraft($0) }))
-                .font(.system(.body, design: .rounded, weight: .medium))
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .keyboardType(.asciiCapable)
-                .submitLabel(.return)
-                .focused($inputFocused)
-                .onSubmit(submit)
-                .frame(minHeight: 44)
-                .accessibilityLabel("Your guess")
-                .accessibilityIdentifier("guessField")
-            Button("Check", systemImage: "arrow.turn.down.left", action: submit)
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                .disabled(game.round.draft.count != game.round.difficulty.letterCount)
-                .accessibilityIdentifier("submitButton")
-        }
-        .padding(.horizontal, 20).padding(.vertical, 8)
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity)
-        .background(.bar)
-    }
-
     private var status: some View {
         Group {
             if let message = game.message ?? game.saveError {
@@ -201,9 +213,9 @@ struct ContentView: View {
                     .multilineTextAlignment(.center).accessibilityIdentifier("gameMessage")
             } else {
                 HStack(spacing: 16) {
-                    legend(typeSize.isAccessibilitySize ? "Right" : "Right spot", symbol: "checkmark")
-                    legend(typeSize.isAccessibilitySize ? "Move" : "Wrong spot", symbol: "arrow.left.arrow.right")
-                    legend(typeSize.isAccessibilitySize ? "Absent" : "Not here", symbol: "minus")
+                    legend(typeSize.isAccessibilitySize ? "Right" : "Right spot", mark: .correct)
+                    legend(typeSize.isAccessibilitySize ? "Move" : "Wrong spot", mark: .present)
+                    legend(typeSize.isAccessibilitySize ? "Absent" : "Not here", mark: .absent)
                 }
                 .font(.caption2).foregroundStyle(.secondary)
             }
@@ -211,9 +223,10 @@ struct ContentView: View {
         .padding(.horizontal, 20).frame(minHeight: 22)
     }
 
-    private func legend(_ title: String, symbol: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: symbol).font(.system(size: 9, weight: .bold))
+    private func legend(_ title: String, mark: LetterMark) -> some View {
+        HStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: 3).fill(EncoreTheme.fill(for: mark))
+                .frame(width: 9, height: 9).accessibilityHidden(true)
             Text(title)
         }
     }
@@ -250,7 +263,6 @@ struct ContentView: View {
     private func changeDifficulty(_ difficulty: Difficulty) {
         guard difficulty != game.round.difficulty else { return }
         if !game.round.isFinished && !game.round.guesses.isEmpty {
-            inputFocused = false
             pendingDifficulty = difficulty
             confirmationIsReveal = false
             showConfirmation = true
@@ -261,7 +273,6 @@ struct ContentView: View {
         withAnimation(reduceMotion ? nil : .smooth(duration: 0.2)) { game.submit() }
         if let error = game.message { AccessibilityNotification.Announcement(error).post() }
         else if game.round.isFinished {
-            inputFocused = false
             AccessibilityNotification.Announcement(game.round.outcome == .won
                 ? "Nicely done! The word was \(game.round.answer). Play again whenever you like."
                 : "The word was \(game.round.answer). You can play again.").post()

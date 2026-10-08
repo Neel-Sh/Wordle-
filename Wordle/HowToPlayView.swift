@@ -16,6 +16,8 @@ struct HowToPlayView: View {
                     }
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Follow the letters").font(.headline)
+                        Text("Tap the keyboard to fill the current row, then press Enter to check your word. The keys keep your clues: gray letters are ruled out, yellow letters belong somewhere else, and green letters are in the right spot.")
+                            .font(.subheadline).foregroundStyle(.secondary)
                         example("C", mark: .correct, title: "Right letter, right spot", detail: "Keep this letter in this position.")
                         example("A", mark: .present, title: "Right letter, different spot", detail: "The word contains this letter somewhere else.")
                         example("T", mark: .absent, title: "Not in the word", detail: "Try a different letter. Repeated letters only light up as often as they appear in the answer.")

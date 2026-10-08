@@ -17,11 +17,11 @@ Unfinished rounds, input, results, streaks, and word history save locally. Switc
 
 ## Design
 
-Built with SwiftUI and the iOS 27 SDK, targeting iOS/iPadOS 27. The interface is monochrome; green and yellow are reserved for letter clues. The board uses clear, rounded content tiles and adapts its row height to the space above the system keyboard. Native navigation toolbars, glass buttons, menus, sheets, and confirmation dialogs provide the interaction layer. The editable `Wordle/EncoreIcon.icon` uses a rounded W vector with native Icon Composer glass materials and light, dark, and tinted appearances.
+Built with SwiftUI and the iOS 27 SDK, targeting iOS/iPadOS 27. The interface is monochrome; green and yellow are reserved for letter clues. The board uses square, rounded content tiles and fits above a custom three-row keyboard. In landscape, the board and keyboard sit side by side. Native navigation toolbars, glass buttons, menus, sheets, and confirmation dialogs provide the interaction layer. The editable `Wordle/EncoreIcon.icon` uses a rounded W vector with native Icon Composer glass materials and light, dark, and tinted appearances.
 
 The design follows Apple's current [Materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials), [Buttons guidance](https://developer.apple.com/design/human-interface-guidelines/buttons), [Toolbars guidance](https://developer.apple.com/design/human-interface-guidelines/toolbars), and [Liquid Glass adoption guidance](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass). Standard controls receive glass automatically; the content board remains readable.
 
-Supports Dark Mode, Dynamic Type with a scrollable board, Reduce Motion, Reduce Transparency, Increase Contrast, and Differentiate Without Color. Every tile and key exposes the letter and clue to accessibility. Input uses Apple’s standard keyboard with English letter input, autocorrection disabled, and native paste, selection, and hardware-keyboard editing. The game board bounds its letter size to preserve every column; surrounding text follows the system text size. Haptics and visual clue symbols can be configured in Settings.
+Supports Dark Mode, Dynamic Type with a scrollable board, Reduce Motion, Reduce Transparency, Increase Contrast, and Differentiate Without Color. Every tile and key exposes the letter and clue to accessibility. Tapping the custom keyboard enters letters directly into the current grid row; its Enter and Delete keys check and edit that row. Submitted guesses color the keys gray, yellow, or green, always retaining the strongest clue for repeated letters. Gray keys remain usable. New rounds clear the key clues, and unfinished rounds restore them from saved guesses. Physical keyboards can also enter letters, delete, and submit without opening a software keyboard. The game board bounds its letter size to preserve every column; surrounding text follows the system text size. Haptics and visual clue symbols can be configured in Settings.
 
 ## Run
 
@@ -43,7 +43,7 @@ The core regression suite exercises the exact production game model, word-select
 ./script/test_core.sh
 ```
 
-The Xcode scheme includes UI tests for unlimited replay, all four difficulties, invalid words and deletion, help and settings, reveal confirmation, difficulty-switch confirmation, and relaunch restoration:
+The Xcode scheme includes UI tests for direct grid entry, keyboard clue retention, unlimited replay, all four difficulties, invalid words and deletion, help and settings, reveal confirmation, difficulty-switch confirmation, larger text, and relaunch restoration:
 
 ```sh
 xcodebuild -project Wordle.xcodeproj -scheme Wordle \
@@ -67,4 +67,3 @@ python3 script/build_word_library.py /path/to/scowl-2020.12.07
 `Wordle/Resources/WordLibraryManifest.json` records the source, commonness levels, counts, and checksums. Answer pools use American and general English commonness levels 40, 50, 50, and 55; accepted guesses include levels through 70.
 
 Encore is an independent implementation and has no association with The New York Times. No Wordle artwork, interface assets, or answer lists are used.
-# Wordle-

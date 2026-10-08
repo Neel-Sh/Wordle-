@@ -1,8 +1,18 @@
 # Verification
 
-Date: October 7, 2026 (America/Los_Angeles).
+Updated: October 8, 2026 (America/Los_Angeles).
 
-## Passed
+## October 8: Custom keyboard and grid polish
+
+- Debug simulator compilation passed for the custom keyboard, direct grid entry, square tiles, and physical-keyboard command responder.
+- 34 production-model checks passed, including absent duplicate letters retaining a known yellow clue, green clues never being downgraded, and replay clearing the draft and keyboard clues.
+- All nine interaction flows passed on the dedicated Encore Keyboard QA iOS 27 simulator: direct entry and clue updates, all difficulties, short/invalid guesses and deletion, help/settings/reveal, difficulty confirmation, larger text, saved-round restoration, unlimited replay, and landscape. They verify that the input field, separate Check button, and system keyboard are absent. Portrait board bounds fit above the keyboard; landscape bounds keep the entire keyboard on screen beside the grid.
+- The final build and nine-test run produced no Swift warnings or invalid-frame layout warnings. The only build warning is the existing App Intents metadata skip because the app does not link AppIntents.
+- Light and Dark Mode screenshots were inspected. The keyboard uses gray for absent letters and retains yellow/green clues across guesses. Gray keys remain usable. Current keyboard evidence is saved as `Encore-Keyboard-Light.png`, `Encore-Keyboard-Dark.png`, `Encore-Keyboard-Landscape.png`, and `Encore-Keyboard-Larger-Text.png` in `docs/screenshots/`.
+
+Physical-device installation and haptic/VoiceOver acceptance have not been repeated for this revision. Physical-keyboard commands compile but have not received hands-on verification.
+
+## October 7: Previous revision
 
 - Xcode 27 Debug simulator build and Release build for a generic iOS device. The Release build was unsigned; this verifies compilation and packaging, not distribution signing.
 - Signed Release build, code-signature validation, installation, and foreground launch on Neel's physical iPhone 18 Pro Max running iOS 27.2. The running app process was confirmed with `devicectl`; the game board, input, and native keyboard were observed on-device.
@@ -15,7 +25,7 @@ Date: October 7, 2026 (America/Los_Angeles).
 
 ## Visual evidence
 
-Screenshots in `docs/screenshots/` show the game, letter clues, result, difficulty, settings, help, statistics, and accessibility text size. Dark Mode with Increase Contrast was also visually inspected. The current interface is monochrome, with green and yellow reserved for word clues. Native Apple buttons, menus, navigation toolbars, keyboard, and sheets supply system interaction behavior.
+Screenshots in `docs/screenshots/` show the game, letter clues, result, difficulty, settings, help, statistics, and accessibility text size. Earlier screenshots document the previous system-keyboard revision. The current interface uses a custom QWERTY keyboard with direct grid entry; native Apple menus, navigation toolbars, and sheets remain. Green and yellow are reserved for letter clues.
 
 ## Acceptance boundaries
 

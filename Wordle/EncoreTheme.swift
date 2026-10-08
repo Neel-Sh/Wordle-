@@ -4,6 +4,23 @@ enum EncoreTheme {
     static let accent = Color("AccentColor")
     static let correct = Color("CorrectColor")
     static let present = Color("PresentColor")
+    static let absent = Color(uiColor: .systemGray)
+
+    static func fill(for mark: LetterMark) -> Color {
+        switch mark {
+        case .correct: correct
+        case .present: present
+        case .absent: absent
+        }
+    }
+
+    static func ink(for mark: LetterMark?) -> Color {
+        switch mark {
+        case .correct, .absent: .white
+        case .present: .black
+        case nil: .primary
+        }
+    }
 }
 
 struct EncoreBackdrop: View {
@@ -22,28 +39,23 @@ struct LetterTile: View {
 
     private var fill: Color {
         switch mark {
-        case .correct: EncoreTheme.correct
-        case .present: EncoreTheme.present
-        case .absent: Color(uiColor: .tertiarySystemFill)
-        case nil: Color(uiColor: .secondarySystemGroupedBackground).opacity(scheme == .dark ? 0.8 : 0.75)
+        case let mark?: EncoreTheme.fill(for: mark)
+        case nil: Color(uiColor: .secondarySystemGroupedBackground).opacity(scheme == .dark ? 0.8 : 1)
         }
     }
 
     private var letterColor: Color {
-        switch mark {
-        case .correct: .white
-        case .present: .black
-        default: .primary
-        }
+        EncoreTheme.ink(for: mark)
     }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            RoundedRectangle(cornerRadius: 13, style: .continuous).fill(fill)
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .strokeBorder(isCurrent ? EncoreTheme.accent.opacity(0.65) : Color.primary.opacity(contrast == .increased ? 0.28 : 0.04),
-                              lineWidth: isCurrent ? 1.5 : 1)
-            Text(letter).font(.system(.title2, design: .rounded, weight: .semibold))
+            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fill)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(isCurrent ? EncoreTheme.accent.opacity(0.55) : Color.primary.opacity(contrast == .increased ? 0.35 : (!letter.isEmpty && mark == nil ? 0.25 : 0.07)),
+                              lineWidth: isCurrent ? 2 : 1)
+            Text(letter).font(.system(size: 26, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(letterColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if usesSymbols, let mark, !letter.isEmpty {

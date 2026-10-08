@@ -36,6 +36,12 @@ struct CoreTests {
         check(round.shareText.contains("2/6") && !round.shareText.contains("CRANE"), "Share grid includes score without spoiling answer")
         let keyMarks = round.keyboardMarks
         check(keyMarks["A"] == .correct && keyMarks["S"] == .absent, "Keyboard retains strongest clue")
+        var repeatedKeys = GameRound(difficulty: .medium, answer: "APPLE")
+        repeatedKeys.guesses = [.evaluate("ALLEY", answer: "APPLE")]
+        check(repeatedKeys.keyboardMarks["L"] == .present, "An absent duplicate cannot gray out a known present letter")
+        repeatedKeys.guesses.append(.evaluate("SLATE", answer: "APPLE"))
+        check(repeatedKeys.keyboardMarks["A"] == .correct && repeatedKeys.keyboardMarks["E"] == .correct,
+              "Keyboard clues upgrade to green and never downgrade")
 
         var expert = GameRound(difficulty: .expert, answer: "LETTERS")
         expert.draft = "TELLERS"
@@ -86,6 +92,7 @@ struct CoreTests {
         restored.submit(); restored.submit()
         check(restored.records.count == 1 && restored.statistics.wins == 1, "Results are recorded exactly once")
         restored.startNewRound()
+        check(restored.round.keyboardMarks.isEmpty && restored.round.draft.isEmpty, "Replay clears keyboard clues and direct board entry")
         check(restored.round.answer != original && !restored.round.isFinished && restored.records.count == 1, "Play again immediately keeps history and changes answer")
         restored.surrender(); restored.surrender()
         check(restored.records.count == 2 && restored.statistics.currentStreak == 0 && restored.statistics.bestStreak == 1, "Surrender counts once and ends the streak")

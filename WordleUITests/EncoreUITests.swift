@@ -12,8 +12,15 @@ final class EncoreUITests: XCTestCase {
     }
 
     private func enter(_ word: String) {
-        app.textFields["guessField"].tap()
-        app.textFields["guessField"].typeText(word)
+        for letter in word.uppercased() { app.buttons["key_\(letter)"].tap() }
+    }
+
+    private var enterKey: XCUIElement { app.buttons["keyboardEnter"] }
+    private var keyboard: XCUIElement { app.otherElements["gameKeyboard"] }
+
+    private func assertBoardAboveKeyboard() {
+        XCTAssertLessThanOrEqual(app.otherElements["wordBoard"].frame.maxY, keyboard.frame.minY,
+                                 "Every board row should fit above the custom keyboard")
     }
 
     private var cancelButton: XCUIElement {
@@ -29,20 +36,18 @@ final class EncoreUITests: XCTestCase {
 
     func testWinThenPlayAgainWithoutDailyLimit() {
         capture("Encore-Light")
-        let board = app.otherElements["wordBoard"]
-        XCTAssertLessThanOrEqual(board.frame.maxY, app.textFields["guessField"].frame.minY,
-                                 "The system keyboard and input must leave the full board visible")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["submitButton"].isEnabled)
+        assertBoardAboveKeyboard()
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        XCTAssertFalse(app.textFields["guessField"].exists)
+        XCTAssertFalse(app.buttons["submitButton"].exists)
         enter("CRANE")
-        XCTAssertTrue(app.buttons["submitButton"].isEnabled)
-        app.buttons["submitButton"].tap()
+        enterKey.tap()
         XCTAssertTrue(app.buttons["playAgainButton"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertEqual(app.staticTexts["revealedAnswer"].label, "CRANE")
         capture("Encore-Win")
         app.buttons["playAgainButton"].tap()
-        XCTAssertTrue(app.textFields["guessField"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["submitButton"].isEnabled)
+        XCTAssertTrue(enterKey.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["key_C"].value as? String, "Not used")
         XCTAssertFalse(app.staticTexts["revealedAnswer"].exists)
         app.buttons["statsButton"].tap()
         XCTAssertTrue(app.staticTexts["Recent rounds"].waitForExistence(timeout: 5))
@@ -51,15 +56,15 @@ final class EncoreUITests: XCTestCase {
 
     func testUnfinishedRoundSurvivesRelaunch() {
         enter("SLATE")
-        app.buttons["submitButton"].tap()
+        enterKey.tap()
         enter("CR")
         app.terminate()
         app.launchArguments = ["-ui-testing-resume"]
         app.launch()
-        XCTAssertTrue(app.textFields["guessField"].waitForExistence(timeout: 10))
+        XCTAssertTrue(enterKey.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons["key_S"].value as? String, "Not in the word")
         enter("ANE")
-        XCTAssertTrue(app.buttons["submitButton"].isEnabled)
-        app.buttons["submitButton"].tap()
+        enterKey.tap()
         XCTAssertTrue(app.buttons["playAgainButton"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Found in 2 guesses. There’s always another."].exists)
     }
@@ -68,27 +73,56 @@ final class EncoreUITests: XCTestCase {
         app.terminate()
         app.launchArguments = ["-ui-testing", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
-        XCTAssertTrue(app.textFields["guessField"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.textFields["guessField"].isHittable)
-        XCTAssertLessThanOrEqual(app.otherElements["wordBoard"].frame.maxY,
-                                 app.textFields["guessField"].frame.minY)
+        XCTAssertTrue(enterKey.waitForExistence(timeout: 10))
+        XCTAssertTrue(enterKey.isHittable)
+        assertBoardAboveKeyboard()
         capture("Encore-Larger-Text")
         enter("CRANE")
-        app.buttons["submitButton"].tap()
+        enterKey.tap()
         XCTAssertTrue(app.buttons["playAgainButton"].waitForExistence(timeout: 5))
         if !app.buttons["playAgainButton"].isHittable { app.scrollViews.firstMatch.swipeUp() }
         XCTAssertTrue(app.buttons["playAgainButton"].isHittable)
     }
 
     func testInvalidGuessAndDeletePreserveAttempts() {
+        enterKey.tap()
+        XCTAssertTrue(app.staticTexts["gameMessage"].label.contains("5-letter"))
         enter("ZZZZZ")
-        app.buttons["submitButton"].tap()
+        enter("A") // A full row ignores further letter presses.
+        enterKey.tap()
         XCTAssertTrue(app.staticTexts["gameMessage"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["gameMessage"].label.contains("dictionary"))
         capture("Encore-Validation")
-        app.keys["delete"].tap()
-        XCTAssertFalse(app.buttons["submitButton"].isEnabled)
+        app.buttons["keyboardDelete"].tap()
         XCTAssertFalse(app.staticTexts["gameMessage"].exists)
+        enterKey.tap()
+        XCTAssertTrue(app.staticTexts["gameMessage"].label.contains("5-letter"))
+        XCTAssertTrue(app.staticTexts["6 guesses left"].exists)
+        XCTAssertEqual(app.buttons["key_Z"].value as? String, "Not used")
+    }
+
+    func testKeyboardCluesAndDirectGridEntry() {
+        enter("SLATE")
+        XCTAssertTrue(app.descendants(matching: .any)["tile_0_0"].label.contains("S"))
+        enterKey.tap()
+        XCTAssertEqual(app.buttons["key_S"].value as? String, "Not in the word")
+        XCTAssertEqual(app.buttons["key_L"].value as? String, "Not in the word")
+        XCTAssertEqual(app.buttons["key_A"].value as? String, "Correct position")
+        XCTAssertEqual(app.buttons["key_E"].value as? String, "Correct position")
+        XCTAssertEqual(app.buttons["key_C"].value as? String, "Not used")
+        capture("Encore-Custom-Keyboard-Clues")
+        enter("REACH")
+        enterKey.tap()
+        XCTAssertEqual(app.buttons["key_R"].value as? String, "In the word, different position")
+        XCTAssertEqual(app.buttons["key_E"].value as? String, "Correct position",
+                       "A green clue must survive a later yellow clue")
+        XCTAssertEqual(app.buttons["key_H"].value as? String, "Not in the word")
+        enter("S") // Gray keys remain usable, as in Wordle.
+        XCTAssertTrue(app.descendants(matching: .any)["tile_2_0"].label.contains("S"))
+        app.buttons["keyboardDelete"].tap()
+        enter("CRANE")
+        enterKey.tap()
+        XCTAssertTrue(app.buttons["playAgainButton"].waitForExistence(timeout: 5))
     }
 
     func testAllFourDifficultiesArePlayable() {
@@ -96,12 +130,37 @@ final class EncoreUITests: XCTestCase {
             app.buttons["difficultyMenu"].tap()
             app.buttons["difficulty_\(difficulty)"].tap()
             XCTAssertTrue(app.buttons["difficultyMenu"].label.contains("\(letters) letters"))
-            XCTAssertTrue(app.textFields["guessField"].isHittable)
-            XCTAssertTrue(app.buttons["submitButton"].exists)
-            XCTAssertLessThanOrEqual(app.otherElements["wordBoard"].frame.maxY,
-                                     app.textFields["guessField"].frame.minY)
+            XCTAssertTrue(enterKey.isHittable)
+            assertBoardAboveKeyboard()
+            enter(String(repeating: "Z", count: Int(letters)!))
+            enterKey.tap()
+            XCTAssertTrue(app.staticTexts["gameMessage"].label.contains("dictionary"))
             if difficulty == "expert" { capture("Encore-Extra-Hard") }
         }
+    }
+
+    func testLandscapeKeyboardKeepsGridPlayable() {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let layoutSettled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let screen = self.app.frame
+            let keys = self.keyboard.frame
+            return screen.width > screen.height && keys.width > 0
+                && keys.maxX <= screen.maxX && keys.maxY <= screen.maxY
+                && self.app.otherElements["wordBoard"].frame.maxX <= keys.minX
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [layoutSettled], timeout: 10), .completed)
+        XCTAssertTrue(enterKey.isHittable)
+        XCTAssertLessThanOrEqual(app.otherElements["wordBoard"].frame.maxX, keyboard.frame.minX,
+                                 "Landscape should place the grid beside the keyboard")
+        enter("SLATE")
+        enterKey.tap()
+        XCTAssertEqual(app.buttons["key_S"].value as? String, "Not in the word")
+        XCTAssertEqual(app.buttons["key_E"].value as? String, "Correct position")
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "Encore-Landscape-Keyboard"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     func testHelpSettingsAndRevealFlow() {
@@ -119,7 +178,7 @@ final class EncoreUITests: XCTestCase {
         app.buttons["Reveal word"].tap()
         XCTAssertTrue(cancelButton.waitForExistence(timeout: 5), app.debugDescription)
         cancelButton.tap()
-        XCTAssertTrue(app.textFields["guessField"].exists)
+        XCTAssertTrue(enterKey.exists)
         app.buttons["moreButton"].tap()
         app.buttons["Reveal word"].tap()
         app.buttons["Reveal word"].tap()
@@ -130,7 +189,7 @@ final class EncoreUITests: XCTestCase {
 
     func testStartedRoundRequiresConfirmationToChangeDifficulty() {
         enter("SLATE")
-        app.buttons["submitButton"].tap()
+        enterKey.tap()
         capture("Encore-Clues")
         app.buttons["difficultyMenu"].tap()
         app.buttons["difficulty_hard"].tap()
