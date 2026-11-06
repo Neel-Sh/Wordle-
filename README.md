@@ -67,3 +67,7 @@ python3 script/build_word_library.py /path/to/scowl-2020.12.07
 `Wordle/Resources/WordLibraryManifest.json` records the source, commonness levels, counts, and checksums. Answer pools use American and general English commonness levels 40, 50, 50, and 55; accepted guesses include levels through 70.
 
 Encore is an independent implementation and has no association with The New York Times. No Wordle artwork, interface assets, or answer lists are used.
+
+## Repository and contributions
+
+The product is **Encore**; the repository remains `Wordle-` and the Xcode project/scheme remain `Wordle` for existing build commands. Start with [Contributing](CONTRIBUTING.md), run the core regression command above for game changes, and preserve the bundled word-library attribution. Select your own development team for device builds. The word-library notice does not provide a license for the rest of the app; no repository-wide license file is included.
